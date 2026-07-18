@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/buttons/Button";
 import { ToastService } from "@/services/ToastService";
+import { openManualCopyPrompt } from "@/lib/utils";
 
 export const RegisterSuccessScreen = () => {
   const searchParams = useSearchParams();
@@ -16,13 +17,13 @@ export const RegisterSuccessScreen = () => {
     return `${window.location.origin}/auth/register?ref=${encodeURIComponent(refCode)}`;
   }, [refCode]);
 
-  const copyValue = async (text: string, label: string) => {
+  const manualCopy = (text: string, label: string) => {
     if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      ToastService.copied(label);
-    } catch {
-      ToastService.error("Không thể sao chép. Vui lòng thử lại.");
+    const opened = openManualCopyPrompt(text, label);
+    if (opened) {
+      ToastService.info(`Đã mở hộp sao chép thủ công cho ${label}.`);
+    } else {
+      ToastService.error("Không thể mở hộp sao chép thủ công.");
     }
   };
 
@@ -42,7 +43,7 @@ export const RegisterSuccessScreen = () => {
       }
     }
 
-    await copyValue(inviteLink, "Link mời");
+    manualCopy(inviteLink, "link mời");
   };
 
   return (
@@ -63,7 +64,7 @@ export const RegisterSuccessScreen = () => {
             <Button
               variant="outline"
               className="mt-3"
-              onClick={() => copyValue(refCode, "Mã giới thiệu")}
+              onClick={() => manualCopy(refCode, "mã giới thiệu")}
               disabled={!refCode}
             >
               <Copy className="w-4 h-4" />
@@ -77,7 +78,7 @@ export const RegisterSuccessScreen = () => {
             <div className="flex flex-wrap gap-2 mt-3">
               <Button
                 variant="outline"
-                onClick={() => copyValue(inviteLink, "Link mời")}
+                onClick={() => manualCopy(inviteLink, "link mời")}
                 disabled={!inviteLink}
               >
                 <Copy className="w-4 h-4" />

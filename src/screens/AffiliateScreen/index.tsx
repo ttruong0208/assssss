@@ -8,15 +8,15 @@ import { UserService } from "@/api/services/userService";
 import { UserProfile } from "@/api/api";
 import { ToastService } from "@/services/ToastService";
 import { Button } from "@/components/buttons/Button";
+import { openManualCopyPrompt } from "@/lib/utils";
 
-const copyText = async (text: string, label: string) => {
+const manualCopy = (text: string, label: string) => {
   if (!text) return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-    ToastService.copied(label);
-  } catch {
-    ToastService.error("Không thể sao chép, vui lòng thử lại.");
+  const opened = openManualCopyPrompt(text, label);
+  if (opened) {
+    ToastService.info(`Đã mở hộp sao chép thủ công cho ${label}.`);
+  } else {
+    ToastService.error("Không thể mở hộp sao chép thủ công.");
   }
 };
 
@@ -68,7 +68,7 @@ export const AffiliateScreen = () => {
       }
     }
 
-    await copyText(inviteLink, "Link mời");
+    manualCopy(inviteLink, "link mời");
   }, [inviteLink]);
 
   if (!isAuthenticated) {
@@ -107,7 +107,7 @@ export const AffiliateScreen = () => {
             <Button
               className="mt-3"
               variant="outline"
-              onClick={() => copyText(refCode, "Mã giới thiệu")}
+              onClick={() => manualCopy(refCode, "mã giới thiệu")}
               disabled={!refCode}
             >
               <Copy className="w-4 h-4" />
@@ -155,7 +155,7 @@ export const AffiliateScreen = () => {
           <div className="flex flex-wrap gap-3">
             <Button
               variant="outline"
-              onClick={() => copyText(inviteLink, "Link mời")}
+              onClick={() => manualCopy(inviteLink, "link mời")}
               disabled={!inviteLink}
             >
               <Copy className="w-4 h-4" />
