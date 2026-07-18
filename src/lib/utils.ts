@@ -75,10 +75,19 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // fallback bên dưới
   }
 
+  const manualPromptFallback = (): boolean => {
+    try {
+      window.prompt("Sao chep thu cong (Ctrl+C, Enter):", text);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   // Last fallback: contenteditable node + selection/range for stricter browsers.
   try {
     const selection = window.getSelection();
-    if (!selection) return false;
+    if (!selection) return manualPromptFallback();
 
     const activeElement = document.activeElement as HTMLElement | null;
     const previousRanges: Range[] = [];
@@ -107,15 +116,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     document.body.removeChild(container);
     activeElement?.focus?.();
 
-    return copied;
+    return copied || manualPromptFallback();
   } catch {
     // Final manual fallback: let user copy from native prompt.
-    try {
-      window.prompt("Sao chep thu cong (Ctrl+C, Enter):", text);
-      return true;
-    } catch {
-      return false;
-    }
+    return manualPromptFallback();
   }
 }
 
