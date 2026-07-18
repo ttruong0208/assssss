@@ -41,8 +41,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 
   try {
-    // Try Clipboard API first. Some environments still allow it on non-HTTPS origins.
-    if (navigator.clipboard?.writeText) {
+    // Chỉ dùng Clipboard API khi ở secure context (HTTPS/localhost).
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
       return true;
     }
@@ -53,13 +53,20 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.setAttribute("readonly", "true");
+    textarea.setAttribute("readonly", "");
+    // iOS/Safari compatibility: keep element in normal flow but invisible.
     textarea.style.position = "fixed";
-    textarea.style.top = "-9999px";
-    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    textarea.style.left = "0";
+    textarea.style.width = "1px";
+    textarea.style.height = "1px";
+    textarea.style.padding = "0";
+    textarea.style.border = "0";
     textarea.style.opacity = "0";
+    textarea.style.fontSize = "16px";
     document.body.appendChild(textarea);
     textarea.focus();
+    textarea.setSelectionRange(0, textarea.value.length);
     textarea.select();
     const succeeded = document.execCommand("copy");
     document.body.removeChild(textarea);
@@ -102,7 +109,13 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
     return copied;
   } catch {
-    return false;
+    // Final manual fallback: let user copy from native prompt.
+    try {
+      window.prompt("Sao chep thu cong (Ctrl+C, Enter):", text);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
