@@ -124,6 +124,25 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
+ * Hiển thị hộp thoại copy thủ công cho người dùng.
+ * Dùng khi trình duyệt chặn clipboard trên HTTP.
+ * @param text - Văn bản cần sao chép
+ * @param label - Nhãn nội dung để hiển thị trong prompt
+ * @returns true nếu prompt được mở, false nếu không thể mở
+ */
+export function openManualCopyPrompt(text: string, label: string = "Nội dung"): boolean {
+  if (!text) return false;
+  if (typeof window === "undefined") return false;
+
+  try {
+    window.prompt(`Sao chép thủ công ${label} (Ctrl+C, Enter):`, text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Lấy danh sách banner theo screen và position
  * @param screen - Màn hình hiển thị (home, product, product-list, product-detail, event, event-list, event-detail, news, news-list, news-detail, cart, checkout, profile, other)
  * @param position - Vị trí hiển thị (top, middle, bottom)
