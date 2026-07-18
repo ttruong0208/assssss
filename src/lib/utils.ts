@@ -28,6 +28,85 @@ export function formatNumberWithSpaces(value: number | string): string {
 }
 
 /**
+ * Sao chép văn bản vào clipboard, có fallback cho môi trường không bảo mật (HTTP).
+ * Ưu tiên dùng navigator.clipboard khi ở secure context, nếu không sẽ dùng
+ * textarea tạm + document.execCommand('copy').
+ * @param text - Văn bản cần sao chép
+ * @returns true nếu sao chép thành công, false nếu thất bại
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return false;
+  }
+
+  try {
+    // Try Clipboard API first. Some environments still allow it on non-HTTPS origins.
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fallback bên dưới
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const succeeded = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    if (succeeded) return true;
+  } catch {
+    // fallback bên dưới
+  }
+
+  // Last fallback: contenteditable node + selection/range for stricter browsers.
+  try {
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    const activeElement = document.activeElement as HTMLElement | null;
+    const previousRanges: Range[] = [];
+    for (let i = 0; i < selection.rangeCount; i += 1) {
+      const range = selection.getRangeAt(i);
+      previousRanges.push(range.cloneRange());
+    }
+
+    const container = document.createElement("div");
+    container.textContent = text;
+    container.setAttribute("contenteditable", "true");
+    container.style.position = "fixed";
+    container.style.top = "0";
+    container.style.left = "-9999px";
+    container.style.whiteSpace = "pre";
+    document.body.appendChild(container);
+
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const copied = document.execCommand("copy");
+    selection.removeAllRanges();
+    previousRanges.forEach((savedRange) => selection.addRange(savedRange));
+    document.body.removeChild(container);
+    activeElement?.focus?.();
+
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Lấy danh sách banner theo screen và position
  * @param screen - Màn hình hiển thị (home, product, product-list, product-detail, event, event-list, event-detail, news, news-list, news-detail, cart, checkout, profile, other)
  * @param position - Vị trí hiển thị (top, middle, bottom)

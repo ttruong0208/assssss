@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Button, ButtonProps } from './Button'
 import { Check, Copy } from 'lucide-react'
+import { copyToClipboard } from '@/lib/utils'
 
 export interface CopyButtonProps extends Omit<ButtonProps, 'icon' | 'onClick'> {
   textToCopy: string
@@ -24,7 +25,10 @@ export const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(
 
     const handleCopy = async () => {
       try {
-        await navigator.clipboard.writeText(textToCopy)
+        const copiedSuccessfully = await copyToClipboard(textToCopy)
+        if (!copiedSuccessfully) {
+          throw new Error('Copy command was rejected')
+        }
         setCopied(true)
         onCopy?.()
         setTimeout(() => setCopied(false), successDuration)
