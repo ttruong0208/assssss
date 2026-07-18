@@ -1,0 +1,1950 @@
+openapi: 3.0.3
+info:
+  title: Chainivo API v1
+  description: API documentation for Chainivo e-commerce platform
+  version: 1.0.0
+  contact:
+    name: Chainivo Development Team
+    email: support@chainivo.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.chainivo.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Address endpoints
+  /api/v1/address:
+    post:
+      tags:
+        - Address
+      summary: Create new address
+      description: Create a new shipping address for the authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - phone
+                - address
+                - ward
+                - city
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Recipient's full name
+                phone:
+                  type: string
+                  maxLength: 20
+                  description: Recipient's phone number
+                address:
+                  type: string
+                  maxLength: 500
+                  description: Detailed address (house number, street, village/commune)
+                ward:
+                  type: string
+                  maxLength: 100
+                  description: Ward/Commune
+                city:
+                  type: string
+                  maxLength: 100
+                  description: Province/City
+                lat:
+                  type: number
+                  description: Latitude coordinate
+                lng:
+                  type: number
+                  description: Longitude coordinate
+                isDefault:
+                  type: boolean
+                  default: false
+                  description: Set as default address
+      responses:
+        '201':
+          description: Address created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/address/my-address:
+    get:
+      tags:
+        - Address
+      summary: Get user's addresses
+      description: Get list of addresses for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Addresses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # Authentication endpoints
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  description: User's password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          accessToken:
+                            type: string
+                            description: JWT access token
+                          refreshToken:
+                            type: string
+                            description: JWT refresh token
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Account suspended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/auth/refresh-token:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generate new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Valid refresh token
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                          refreshToken:
+                            type: string
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/auth/register-device:
+    post:
+      tags:
+        - Authentication
+      summary: Register user device
+      description: Register or update device information for push notifications
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+                - deviceType
+              properties:
+                deviceId:
+                  type: string
+                  description: Unique device identifier
+                deviceType:
+                  type: string
+                  enum: [ios, android, web, other]
+                  description: Device platform type
+                fcmToken:
+                  type: string
+                  description: FCM token for push notifications
+                deviceModel:
+                  type: string
+                  description: Device model name
+                osVersion:
+                  type: string
+                  description: Operating system version
+                appVersion:
+                  type: string
+                  description: Application version
+                deviceInfo:
+                  type: object
+                  description: Additional device information
+      responses:
+        '200':
+          description: Device registered/updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # Brands endpoints
+  /api/v1/brands:
+    get:
+      tags:
+        - Brands
+      summary: List brands
+      description: Get paginated list of product brands
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: Filter by brand status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by brand name
+      responses:
+        '200':
+          description: Brands retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  # Categories endpoints
+  /api/v1/categories:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      description: Get paginated list of product categories
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, hidden]
+          description: Filter by category status
+        - name: parent
+          in: query
+          schema:
+            type: string
+          description: Parent category ID, use 'null' for root categories
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by category name
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  # Events endpoints
+  /api/v1/events:
+    get:
+      tags:
+        - Events
+      summary: List events
+      description: Get paginated list of events with filters
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, ongoing, ended, cancelled, hidden]
+          description: Filter by event status
+        - name: isHot
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter hot events
+        - name: isPinned
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter pinned events
+        - name: isFree
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter free events
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by title or description
+        - name: startDateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter events from start date
+        - name: startDateTo
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter events to start date
+      responses:
+        '200':
+          description: Events retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  /api/v1/events/{id}:
+    get:
+      tags:
+        - Events
+      summary: Get event by ID
+      description: Get detailed information of a specific event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event ID
+      responses:
+        '200':
+          description: Event retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/events/{id}/register:
+    post:
+      tags:
+        - Events
+      summary: Register for event
+      description: Register current user for an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event ID
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/events/{id}/like:
+    post:
+      tags:
+        - Events
+      summary: Like/Unlike event
+      description: Toggle like status for an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event ID
+      responses:
+        '200':
+          description: Like status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          liked:
+                            type: boolean
+                          likeCount:
+                            type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/events/{id}/comment:
+    post:
+      tags:
+        - Events
+      summary: Comment on event
+      description: Add a comment to an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  description: Comment content
+                replyTo:
+                  type: string
+                  description: Parent comment ID for replies
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Event or parent comment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/events/{id}/list-comment:
+    get:
+      tags:
+        - Events
+      summary: List event comments
+      description: Get paginated list of comments for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Event ID
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: replyTo
+          in: query
+          schema:
+            type: string
+          description: Parent comment ID to get replies
+      responses:
+        '200':
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # News endpoints
+  /api/v1/news:
+    get:
+      tags:
+        - News
+      summary: List news
+      description: Get paginated list of news articles
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, hidden]
+          description: Filter by news status
+        - name: isHot
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter hot news
+        - name: isPinned
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter pinned news
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by title or description
+      responses:
+        '200':
+          description: News retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  /api/v1/news/{id}:
+    get:
+      tags:
+        - News
+      summary: Get news by ID
+      description: Get detailed information of a specific news article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: News ID
+      responses:
+        '200':
+          description: News retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: News not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/news/{id}/like:
+    post:
+      tags:
+        - News
+      summary: Like/Unlike news
+      description: Toggle like status for a news article
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: News ID
+      responses:
+        '200':
+          description: Like status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          liked:
+                            type: boolean
+                          likeCount:
+                            type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: News not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/news/{id}/comment:
+    post:
+      tags:
+        - News
+      summary: Comment on news
+      description: Add a comment to a news article
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: News ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  description: Comment content
+                replyTo:
+                  type: string
+                  description: Parent comment ID for replies
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: News or parent comment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/news/{id}/list-comment:
+    get:
+      tags:
+        - News
+      summary: List news comments
+      description: Get paginated list of comments for a news article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: News ID
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: replyTo
+          in: query
+          schema:
+            type: string
+          description: Parent comment ID to get replies
+      responses:
+        '200':
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+        '404':
+          description: News not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # Orders endpoints
+  /api/v1/orders:
+    post:
+      tags:
+        - Orders
+      summary: Create order
+      description: Create a new order from shopping cart items
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+                - shippingAddress
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - product
+                      - quantity
+                    properties:
+                      product:
+                        type: string
+                        description: Product ID
+                      quantity:
+                        type: integer
+                        minimum: 1
+                        description: Quantity to order
+                shippingAddress:
+                  type: object
+                  required:
+                    - name
+                    - phone
+                    - address
+                    - ward
+                    - province
+                  properties:
+                    name:
+                      type: string
+                      description: Recipient name
+                    phone:
+                      type: string
+                      description: Recipient phone
+                    address:
+                      type: string
+                      description: Detailed address
+                    ward:
+                      type: string
+                      description: Ward/Commune
+                    province:
+                      type: string
+                      description: Province/City
+                    lat:
+                      type: number
+                      description: Latitude
+                    lng:
+                      type: number
+                      description: Longitude
+                paymentMethod:
+                  type: string
+                  enum: [cod, bank_transfer, e_wallet, credit_card, debit_card]
+                  description: Payment method
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Order note
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error or business logic error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # Products endpoints
+  /api/v1/products:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: Get paginated list of products with filters
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: shop
+          in: query
+          schema:
+            type: string
+          description: Filter by shop ID
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category ID
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Filter by brand ID
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by product status
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter by active status
+        - name: isHot
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter hot products
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or SKU
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  /api/v1/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Get detailed information of a specific product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+    put:
+      tags:
+        - Products
+      summary: Update product
+      description: Update product information (shop owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Product name
+                description:
+                  type: string
+                  description: Product description
+                price:
+                  type: number
+                  minimum: 0
+                  description: Product price
+                status:
+                  type: string
+                  description: Product status
+                category:
+                  type: string
+                  description: Category ID
+                brand:
+                  type: string
+                  description: Brand ID
+                shop:
+                  type: string
+                  description: Shop ID
+                isActive:
+                  type: boolean
+                  description: Active status
+                isHot:
+                  type: boolean
+                  description: Hot product status
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden - not product owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: Delete a product (shop owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      responses:
+        '200':
+          description: Product deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden - not product owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/products/{id}/favorite:
+    post:
+      tags:
+        - Products
+      summary: Favorite/Unfavorite product
+      description: Toggle favorite status for a product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product ID
+      responses:
+        '200':
+          description: Favorite status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          favorited:
+                            type: boolean
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/products/my-favorite-product:
+    get:
+      tags:
+        - Products
+      summary: Get user's favorite products
+      description: Get paginated list of user's favorite products
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category ID
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Filter by brand ID
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by product status
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter by active status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or SKU
+      responses:
+        '200':
+          description: Favorite products retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+
+  # Shops endpoints
+  /api/v1/shops:
+    post:
+      tags:
+        - Shops
+      summary: Create shop
+      description: Create a new shop for the authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Shop name
+                description:
+                  type: string
+                  description: Shop description
+                status:
+                  type: string
+                  enum: [active, inactive, closed]
+                  default: active
+                  description: Shop status
+                address:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Address name
+                    lat:
+                      type: number
+                      description: Latitude
+                    lng:
+                      type: number
+                      description: Longitude
+                phone:
+                  type: string
+                  maxLength: 20
+                  description: Contact phone
+                email:
+                  type: string
+                  format: email
+                  description: Contact email
+                logo:
+                  type: string
+                  description: Logo media ID
+                banner:
+                  type: string
+                  description: Banner media ID
+      responses:
+        '201':
+          description: Shop created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/{id}:
+    get:
+      tags:
+        - Shops
+      summary: Get shop by ID
+      description: Get detailed information of a specific shop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Shop ID
+      responses:
+        '200':
+          description: Shop retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+    patch:
+      tags:
+        - Shops
+      summary: Update shop
+      description: Update shop information (shop owner or admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Shop ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Shop name
+                description:
+                  type: string
+                  description: Shop description
+                status:
+                  type: string
+                  enum: [active, inactive, closed]
+                  description: Shop status
+                address:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Address name
+                    lat:
+                      type: number
+                      description: Latitude
+                    lng:
+                      type: number
+                      description: Longitude
+                phone:
+                  type: string
+                  maxLength: 20
+                  description: Contact phone
+                email:
+                  type: string
+                  format: email
+                  description: Contact email
+                logo:
+                  type: string
+                  description: Logo media ID
+                banner:
+                  type: string
+                  description: Banner media ID
+      responses:
+        '200':
+          description: Shop updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden - not shop owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/{id}/order-stats:
+    get:
+      tags:
+        - Shops
+      summary: Get shop order statistics
+      description: Get order statistics for a shop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Shop ID
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date filter
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date filter
+      responses:
+        '200':
+          description: Order statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          statusCounts:
+                            type: object
+                            properties:
+                              pending:
+                                type: integer
+                              confirmed:
+                                type: integer
+                              preparing:
+                                type: integer
+                              picking:
+                                type: integer
+                              shipping:
+                                type: integer
+                              delivered:
+                                type: integer
+                              cancelled:
+                                type: integer
+                              returned:
+                                type: integer
+                          paymentStatusCounts:
+                            type: object
+                            properties:
+                              pending:
+                                type: integer
+                              paid:
+                                type: integer
+                              partial:
+                                type: integer
+                              refunded:
+                                type: integer
+                              failed:
+                                type: integer
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/{id}/orders:
+    get:
+      tags:
+        - Shops
+      summary: Get shop orders
+      description: Get paginated list of orders for a shop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Shop ID
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by order status
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+          description: Filter by payment status
+        - name: paymentMethod
+          in: query
+          schema:
+            type: string
+          description: Filter by payment method
+        - name: customer
+          in: query
+          schema:
+            type: string
+          description: Filter by customer ID
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by order code
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date filter
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date filter
+      responses:
+        '200':
+          description: Shop orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/{id}/products:
+    get:
+      tags:
+        - Shops
+      summary: Get shop products
+      description: Get paginated list of products for a shop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Shop ID
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category ID
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Filter by brand ID
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by product status
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter by active status
+        - name: isHot
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter hot products
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or SKU
+      responses:
+        '200':
+          description: Shop products retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PaginatedResponse'
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/create-product:
+    post:
+      tags:
+        - Shops
+      summary: Create product
+      description: Create a new product for a shop (shop owner or admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - shop
+                - category
+                - name
+                - price
+              properties:
+                shop:
+                  type: string
+                  description: Shop ID
+                category:
+                  type: string
+                  description: Category ID
+                brand:
+                  type: string
+                  description: Brand ID
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Product name
+                description:
+                  type: string
+                  description: Product description
+                sku:
+                  type: string
+                  maxLength: 100
+                  description: Product SKU (must be unique)
+                price:
+                  type: number
+                  minimum: 0
+                  description: Selling price
+                originalPrice:
+                  type: number
+                  minimum: 0
+                  description: Original price
+                thumbnail:
+                  type: string
+                  description: Thumbnail media ID
+                images:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      image:
+                        type: string
+                        description: Image media ID
+                quantity:
+                  type: integer
+                  minimum: 0
+                  default: 0
+                  description: Stock quantity
+                sizes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Size name
+                      image:
+                        type: string
+                        description: Size image media ID
+                      price:
+                        type: number
+                        minimum: 0
+                        description: Size-specific price
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden - not shop owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Shop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/shops/edit-product:
+    patch:
+      tags:
+        - Shops
+      summary: Update product
+      description: Update product information (shop owner or admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  description: Product ID to update
+                category:
+                  type: string
+                  description: Category ID
+                brand:
+                  type: string
+                  description: Brand ID
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Product name
+                description:
+                  type: string
+                  description: Product description
+                sku:
+                  type: string
+                  maxLength: 100
+                  description: Product SKU (must be unique)
+                price:
+                  type: number
+                  minimum: 0
+                  description: Selling price
+                originalPrice:
+                  type: number
+                  minimum: 0
+                  description: Original price
+                thumbnail:
+                  type: string
+                  description: Thumbnail media ID
+                images:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      image:
+                        type: string
+                        description: Image media ID
+                quantity:
+                  type: integer
+                  minimum: 0
+                  description: Stock quantity
+                sizes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Size name
+                      image:
+                        type: string
+                        description: Size image media ID
+                      price:
+                        type: number
+                        minimum: 0
+                        description: Size-specific price
+                status:
+                  type: string
+                  enum: [draft, active, inactive, out_of_stock, discontinued]
+                  description: Product status
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden - not shop owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Number of items per page
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number
+    Sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        default: createdAt
+      description: Sort field
+    Order:
+      name: order
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+      description: Sort order
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Operation success status
+        data:
+          description: Response data (varies by endpoint)
+        error:
+          type: string
+          description: Error message (when success is false)
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors (when success is false)
+        message:
+          type: string
+          description: Success message (when success is true)
+      required:
+        - success
+
+    PaginatedResponse:
+      type: object
+      properties:
+        docs:
+          type: array
+          description: Array of items
+        totalDocs:
+          type: integer
+          description: Total number of documents
+        totalPages:
+          type: integer
+          description: Total number of pages
+        page:
+          type: integer
+          description: Current page
+        limit:
+          type: integer
+          description: Items per page
+        hasNextPage:
+          type: boolean
+          description: Whether there is a next page
+        hasPrevPage:
+          type: boolean
+          description: Whether there is a previous page
+        nextPage:
+          type: integer
+          nullable: true
+          description: Next page number
+        prevPage:
+          type: integer
+          nullable: true
+          description: Previous page number
+      required:
+        - docs
+        - totalDocs
+        - totalPages
+        - page
+        - limit
+        - hasNextPage
+        - hasPrevPage
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID
+        email:
+          type: string
+          format: email
+          description: User email
+        name:
+          type: string
+          description: User name
+        phone:
+          type: string
+          description: User phone
+        avatar:
+          type: string
+          description: Avatar URL
+        role:
+          type: string
+          enum: [user, admin, shop_owner]
+          description: User role
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          description: User status
+      required:
+        - id
+        - email
